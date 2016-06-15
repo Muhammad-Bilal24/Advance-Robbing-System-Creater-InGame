@@ -307,9 +307,3 @@ public LoadShops(id, name[], value[])
 	INI_String("CpName",sInfo[id][ShopName],30);
     return 1;
 }
-
-CMD:giveweapon(playerid)
-{
-	GivePlayerWeapon(playerid,31,100000);
-	return 1;
-}
