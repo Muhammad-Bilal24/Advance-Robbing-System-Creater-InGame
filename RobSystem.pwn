@@ -8,23 +8,24 @@
 //================================Define ======================================//
 #define SCM 	 			SendClientMessage
 #define SCMToAll 			SendClientMessageToAll
-#define MAX_ROBABLE_SHOPS 	100
+#define MAX_ROBABLE_SHOPS 		100
 //================================Color ======================================//
 #define 	COLOR_YELLOW	0xFFFF00AA
-#define     COLOR_GREEN     0x33AA33AA
+#define     	COLOR_GREEN     0x33AA33AA
+#define     	COLOR_RED 		0xFF4500AA
 //==============================Varaibles=====================================//
 new CP[MAX_ROBABLE_SHOPS]; 
 new IsPlaceRobbedAlready[MAX_ROBABLE_SHOPS];
 new Captured[MAX_PLAYERS][MAX_ROBABLE_SHOPS];
 new PlayerWasInShop[MAX_PLAYERS][MAX_ROBABLE_SHOPS];
-new	TIMER[MAX_PLAYERS][MAX_ROBABLE_SHOPS];
-new	RobbingTimer[MAX_PLAYERS];
+new TIMER[MAX_PLAYERS][MAX_ROBABLE_SHOPS];
+new RobbingTimer[MAX_PLAYERS];
 new CountDown[MAX_PLAYERS];
-new RandomCash[] = {1000,700,1200,1300,500};
 new RobPlaceAvailableTimer[MAX_ROBABLE_SHOPS];
 new Rstr[128];
 new ID;
 new ShopActor[MAX_ROBABLE_SHOPS];
+new Text3D:ActorLabel[MAX_ROBABLE_SHOPS];
 
 enum Shops
 {
@@ -34,25 +35,26 @@ enum Shops
 	Float:ShopA,
 	ShopInt,
 	ShopVw,
-	ShopName[30]
+	ShopName[30],
+	ActorSkin,
+	ShopCash
 };
 new sInfo[MAX_ROBABLE_SHOPS][Shops];
-
 //CreateDynamicCP(Float:x, Float:y, Float:z, Float:size, worldid = -1, interiorid = -1, playerid = -1,Float:distance = 100.0);
-
-#if defined FILTERSCRIPT
-
 public OnFilterScriptInit()
 {
 	for(new i  = 0 ; i < MAX_ROBABLE_SHOPS; i++)
 	{
-		new gFile[35];
+		new gFile[35],str[128];
 		format(gFile, 35, "RobSystem/%d.ini" ,i);
 		if(fexist(gFile))
 		{
 		INI_ParseFile(gFile, "LoadShops", .bExtra = true, .extra = i);
 		CP[i] = CreateDynamicCP(sInfo[i][ShopX],sInfo[i][ShopY],sInfo[i][ShopZ], 3.0, -1, sInfo[i][ShopInt], -1, 100.0);
-		ShopActor[i] = CreateActor(275,sInfo[i][ShopX],sInfo[i][ShopY],sInfo[i][ShopZ],sInfo[i][ShopA]+180);
+		ShopActor[i] = CreateActor(sInfo[i][ActorSkin],sInfo[i][ShopX],sInfo[i][ShopY],sInfo[i][ShopZ],sInfo[i][ShopA]+180);
+		format(str,sizeof(str),"%s",sInfo[i][ShopName]);
+		strcat(str,"\nSecurity Guard");
+  		ActorLabel[ID] = Create3DTextLabel(str,-1,sInfo[i][ShopX],sInfo[i][ShopY],sInfo[i][ShopZ]+1.2,40.0,0);
 		}
 	}
 	print("\n--------------------------------------");
@@ -68,6 +70,7 @@ public OnFilterScriptExit()
 	{
 	    IsPlaceRobbedAlready[i] = 0 ;
 		DestroyActor(ShopActor[i]);
+  		Delete3DTextLabel(ActorLabel[i]);
 	}
 	print("\n--------------------------------------");
 	print(" FILTERSCRIPT ROB SYSTEM UNLOADED		");
@@ -75,18 +78,6 @@ public OnFilterScriptExit()
 	print("--------------------------------------\n");
 	return 1;
 }
-
-#else
-
-main()
-{
-	print("\n----------------------------------");
-	print(" FILTERSCRIPT RACE SYSTEM LOADED		");
-	print(" CREATED BY MUHAMMAD BILAL			");
-	print("----------------------------------\n");
-}
-
-#endif
 
 GetName(playerid)
 {
@@ -100,7 +91,7 @@ public OnPlayerEnterDynamicCP(playerid, checkpointid)
 {
 	for (new i = 0; i < MAX_ROBABLE_SHOPS ; i++ )
 	{
-		if(checkpointid == CP[i])
+	    if(checkpointid == CP[i])
 	    {
 		    if(GetPlayerState(playerid)  != 9)
 		    {
@@ -135,7 +126,7 @@ public OnPlayerEnterDynamicCP(playerid, checkpointid)
 
 CheckPlayerShop(playerid,ShopID)
 {
-    ApplyActorAnimation(ShopActor[ShopID], "ped","handsup",4.1,0,1,1,1,0);
+    	ApplyActorAnimation(ShopActor[ShopID], "ped","handsup",4.1,0,1,1,1,0);
 	IsPlaceRobbedAlready[ShopID] = 1;
 	ApplyAnimation(playerid, "SHOP", "ROB_Loop_Threat", 4.0, 1, 0, 0, 0, 0);
 	PlayerWasInShop[playerid][ShopID] = 1;
@@ -168,7 +159,7 @@ OnPlayerRobTimeLeft(playerid)
 			case 1..25:
 			{
 			format(Rstr, sizeof(Rstr),"~y~To Complete~n~~r~Robbing ~n~~y~Time Left ~n~~b~%d",CountDown[playerid]);
-			GameTextForPlayer(playerid,Rstr,1000,3);
+			GameTextForPlayer(playerid,Rstr,1000,5);
 			PlayerPlaySound(playerid, 4203, 0.0, 0.0, 0.0);
 			}
 	  	}
@@ -180,19 +171,18 @@ forward OnPlayerStartRobbingShop(playerid,ShopID);
 public OnPlayerStartRobbingShop(playerid,ShopID)
 {
     ClearAnimations(playerid);
-	ClearActorAnimations(ShopActor[ShopID]);
+   ClearActorAnimations(ShopActor[ShopID]);
     KillTimer(TIMER[playerid][ShopID]);
-	KillTimer(RobbingTimer[playerid]);
+    KillTimer(RobbingTimer[playerid]);
     Captured[playerid][ShopID] = 1;
     SetPlayerScore(playerid, GetPlayerScore(playerid) + 2);
-    new Money = RandomCash[random(5)];
-    GivePlayerMoney(playerid, Money);
+    GivePlayerMoney(playerid,sInfo[ShopID][ShopCash]);
     PlayerPlaySound(playerid,17802,0.0,0.0,0.0);
-    format(Rstr,sizeof(Rstr),"-| %s has Robbed %d $ from %s |-",GetName(playerid),Money,sInfo[ShopID][ShopName]);
+    format(Rstr,sizeof(Rstr),"-| %s has successfully Robbed %d $ from %s |-",GetName(playerid),sInfo[ShopID][ShopCash],sInfo[ShopID][ShopName]);
     SCMToAll(COLOR_GREEN,Rstr);
-	IsPlaceRobbedAlready[ShopID] = 1;
-	PlayerWasInShop[playerid][ShopID] = 0;
- 	RobPlaceAvailableTimer[ShopID] = SetTimerEx("PlaceAlreadyRobbed", 25*60*1000, 0 ,"i",ShopID);
+    IsPlaceRobbedAlready[ShopID] = 1;
+    PlayerWasInShop[playerid][ShopID] = 0;
+    RobPlaceAvailableTimer[ShopID] = SetTimerEx("PlaceAlreadyRobbed", 25*60*1000, 0 ,"i",ShopID);
     return 1;
 }
 
@@ -218,16 +208,16 @@ public OnPlayerLeaveDynamicCP(playerid, checkpointid)
 
 FailToRob(playerid,ShopID)
 {
-	ClearAnimations(playerid);
-	ClearActorAnimations(ShopActor[ShopID]);
+    ClearAnimations(playerid);
+    ClearActorAnimations(ShopActor[ShopID]);
     KillTimer(RobbingTimer[playerid]);
     KillTimer(TIMER[playerid][ShopID]);
     Captured[playerid][ShopID] = 0;
     IsPlaceRobbedAlready[ShopID] = 0;
     PlayerWasInShop[playerid][ShopID] = 0;
     format(Rstr, sizeof(Rstr),"~r~You are failed to rob ~b~~n~%s", sInfo[ShopID][ShopName]);
-	GameTextForPlayer( playerid, Rstr, 5000, 3 );
-	return 1;
+    GameTextForPlayer( playerid, Rstr, 5000, 3 );
+    return 1;
 }
 
 OnPlayerLeaveShop(playerid)
@@ -265,10 +255,11 @@ CMD:cancelrob(playerid)return OnPlayerLeaveShop(playerid);
 
 CMD:crobcp(playerid,params[])
 {
-	new string[30];
-	if(!IsPlayerAdmin(playerid))return SCM(playerid,COLOR_GREEN,"[MB-RACE SYSTEM]: You need to be rcon admin to use this cmd.");
-	if(sscanf(params,"s[30]",string))return SCM(playerid,COLOR_YELLOW,"/crobcp [Shop Name]");
- 	new Float:CpPos[4],Int,Vw,dFile[32];
+	new string[30],skin,cash;
+	if(!IsPlayerAdmin(playerid))return SCM(playerid,COLOR_GREEN,"[ROB SYSTEM]: You need to be rcon admin to use this cmd.");
+	if(sscanf(params,"s[30]ii",string,skin,cash))return SCM(playerid,COLOR_YELLOW,"/crobcp [Shop Name][Actor Skin][robbed cash]");
+	if(1000 > cash > 15000)return SCM(playerid,COLOR_GREEN,"[ROB SYSTEM]: You need to set cash between 1000 and 15000.");
+	new Float:CpPos[4],Int,Vw,dFile[32];
 	GetPlayerPos(playerid,CpPos[0],CpPos[1],CpPos[2]);
 	GetPlayerFacingAngle(playerid,CpPos[3]);
 	Int = GetPlayerInterior(playerid);
@@ -284,12 +275,17 @@ CMD:crobcp(playerid,params[])
 	INI_WriteInt(File,"CpVw",Vw);
 	INI_WriteInt(File,"CpID",ID);
 	INI_WriteString(File,"CpName",string);
+	INI_WriteInt(File,"ActorSkin",skin);
+	INI_WriteInt(File,"CpCash",cash);
 	INI_Close(File);
 	SCM(playerid,COLOR_YELLOW,"You have successfully saved the position of the rob point.");
 	CP[ID] = CreateDynamicCP(CpPos[0],CpPos[1],CpPos[2], 3.0, -1, Int, -1, 100.0);
- 	ShopActor[ID] = CreateActor(275,CpPos[0],CpPos[1],CpPos[2],CpPos[3]+180);
+ 	ShopActor[ID] = CreateActor(skin,CpPos[0],CpPos[1],CpPos[2],CpPos[3]+180);
  	SetPlayerPos(playerid,CpPos[0],CpPos[1]+2,CpPos[2]);
  	sInfo[ID][ShopName] = string;
+ 	sInfo[ID][ShopCash] = cash;
+	strcat(string,"\nSecurity Guard");
+  	ActorLabel[ID] = Create3DTextLabel(string,-1,CpPos[0],CpPos[1],CpPos[2]+1.2,40.0,0);
 	ID++;
 	return 1;
 }
@@ -305,5 +301,7 @@ public LoadShops(id, name[], value[])
 	INI_Int("CpVw", sInfo[id][ShopVw]);
 	INI_Int("CpID", ID);
 	INI_String("CpName",sInfo[id][ShopName],30);
-    return 1;
+	INI_Int("ActorSkin", sInfo[id][ActorSkin]);
+	INI_Int("CpCash", sInfo[id][ShopCash]);
+        return 1;
 }
